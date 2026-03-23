@@ -1,3 +1,19 @@
+# Compass — Project Conventions
+
+## Implementation Plan
+
+The full implementation plan is in [README.md](README.md). Key points for development:
+
+- **Architecture:** One simulation step = one game action. Sequential execution via `params_from_upstream` wiring: `turn → action → {bank, market, map, company_*, player_*}`.
+- **Packages:** `pkg/gamedata/` (pure data, no simulator dep), `pkg/engine/` (Iteration implementations), `pkg/policy/` (AI agents), `pkg/analysis/` (metrics/reporting), `cmd/compass/` (CLI).
+- **ConfigGenerator API:** Use `simulator.NewConfigGenerator()` + `SetPartition()` to wire partitions programmatically in `engine/builder.go`. Do not use YAML configs for the game engine — YAML is only for `gamedata.GameConfig` (tweakable game parameters).
+- **Params safety:** Always use `params.GetCopy()` when values might be retained. Never mutate `params` in `Iterate()`.
+- **State vectors:** State widths are derived from `GameConfig` at build time (number of companies, hexes, etc.), not hardcoded constants.
+- **Custom termination:** `BankBrokenTerminationCondition` checks `bank` partition's cash ≤ 0.
+- **MCTS playouts:** Build standalone simulations via `NewPartitionCoordinator` + `Run()`, not `EmbeddedSimulationRunIteration`.
+
+---
+
 # Stochadex SDK — Project Conventions
 
 This project uses the [stochadex](https://github.com/umbralcalc/stochadex) SDK to build and run simulations.
