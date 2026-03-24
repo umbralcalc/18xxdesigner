@@ -67,28 +67,26 @@ func (t *TurnControllerIteration) advancePrivateAuction(state []float64, actionT
 }
 
 // advanceStockRound handles player turns in the stock round.
+// Priority deal moves to the player left of the last player who acted (bought/sold/parred).
 func (t *TurnControllerIteration) advanceStockRound(state []float64, actionType float64) {
 	activePlayer := int(state[TurnActiveID])
+	nextPlayer := (activePlayer + 1) % t.NumPlayers
 
-	// On pass: mark player as passed. On action: clear all passes.
 	if actionType == ActionPass {
-		// Player passed. Move to next player.
-		nextPlayer := (activePlayer + 1) % t.NumPlayers
-		state[TurnActiveID] = float64(nextPlayer)
-
-		// Check if all players have passed consecutively.
-		// We track this via ActionStep: increment on pass, reset on non-pass.
+		// Increment consecutive pass counter.
 		state[TurnActionStep] += 1
 		if int(state[TurnActionStep]) >= t.NumPlayers {
-			// All players passed → transition to Operating Round.
 			t.transitionToOR(state)
+			return
 		}
 	} else {
 		// Player took an action → reset consecutive pass counter.
+		// Priority deal moves to the next player after the actor.
 		state[TurnActionStep] = 0
-		nextPlayer := (activePlayer + 1) % t.NumPlayers
-		state[TurnActiveID] = float64(nextPlayer)
+		state[TurnPriorityDeal] = float64(nextPlayer)
 	}
+
+	state[TurnActiveID] = float64(nextPlayer)
 }
 
 // transitionToOR moves from Stock Round to Operating Round(s).

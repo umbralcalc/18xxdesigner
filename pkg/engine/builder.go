@@ -39,6 +39,27 @@ const (
 func companyPartName(i int) string { return fmt.Sprintf("company_%d", i) }
 func playerPartName(i int) string  { return fmt.Sprintf("player_%d", i) }
 
+// Layout returns the partition index layout for the game.
+func (b *GameBuilder) Layout() *PartitionLayout {
+	numCompanies := len(b.Config.Companies)
+	layout := &PartitionLayout{
+		TurnPartition:     0,
+		ActionPartition:   1,
+		BankPartition:     2,
+		MarketPartition:   3,
+		MapPartition:      4,
+		CompanyPartitions: make([]int, numCompanies),
+		PlayerPartitions:  make([]int, b.NumPlayers),
+	}
+	for i := 0; i < numCompanies; i++ {
+		layout.CompanyPartitions[i] = 5 + i
+	}
+	for i := 0; i < b.NumPlayers; i++ {
+		layout.PlayerPartitions[i] = 5 + numCompanies + i
+	}
+	return layout
+}
+
 // Build generates the stochadex Settings and Implementations for a full game.
 func (b *GameBuilder) Build() (*simulator.Settings, *simulator.Implementations) {
 	gen := simulator.NewConfigGenerator()
@@ -72,12 +93,18 @@ func (b *GameBuilder) Build() (*simulator.Settings, *simulator.Implementations) 
 		StateHistoryDepth: 1,
 	})
 
+	layout := b.Layout()
+
 	// --- Action partition ---
 	gen.SetPartition(&simulator.PartitionConfig{
 		Name: PartAction,
 		Iteration: &ActionIteration{
 			Agent:         b.Agent,
-			TurnPartition: 0, // resolved at build time — turn is partition 0
+			TurnPartition: layout.TurnPartition,
+			Layout:        layout,
+			Config:        b.Config,
+			MarketGrid:    b.Market,
+			NumPlayers:    b.NumPlayers,
 		},
 		Params:          simulator.Params{Map: map[string][]float64{}},
 		InitStateValues: make([]float64, ActionStateWidth),
