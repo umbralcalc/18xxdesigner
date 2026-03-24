@@ -1,17 +1,23 @@
 package policy
 
 import (
+	"github.com/umbralcalc/stochadex/pkg/simulator"
+	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
 	"github.com/umbralcalc/ttdesigner/pkg/engine"
 )
 
 // HeuristicAgent implements a simple rule-based agent for 1889.
 //
 // Stock Round strategy:
-//   - If cash > 2x cheapest par price and no company parred yet, par one.
-//   - If a floated company has shares in IPO and we can afford it, buy.
+//   - If cash > 2x cheapest par price and holds < 2 companies, par one.
+//   - If a floated company has IPO shares and we can afford it, buy.
 //   - Otherwise pass.
 //
-// Operating Round: always pass (stub for Step 2 skeleton).
+// Operating Round strategy:
+//   - Tile lay: pick the first legal tile placement (if any).
+//   - Token: pass (stub).
+//   - Routes: pass/withhold (stub until route-finding is implemented).
+//   - Buy train: pass (stub).
 type HeuristicAgent struct{}
 
 func (h *HeuristicAgent) ChooseAction(ctx *engine.GameContext) []float64 {
@@ -24,7 +30,6 @@ func (h *HeuristicAgent) ChooseAction(ctx *engine.GameContext) []float64 {
 	case engine.RoundOperatingRound:
 		return h.chooseOperatingRoundAction(ctx)
 	default:
-		// Private auction: pass for now.
 		return passAction()
 	}
 }
@@ -43,11 +48,10 @@ func (h *HeuristicAgent) chooseStockRoundAction(ctx *engine.GameContext) []float
 
 	actions := engine.LegalStockRoundActions(srCtx)
 	if len(actions) <= 1 {
-		return passAction() // only pass is legal
+		return passAction()
 	}
 
-	// Priority 1: Par a company if we haven't parred one yet and can afford it.
-	// Choose the cheapest par price to conserve cash.
+	// Priority 1: Par a company (cheapest par) if holding < 2 companies.
 	var bestPar *engine.Action
 	bestParCost := float64(999999)
 	for i := range actions {
@@ -61,7 +65,6 @@ func (h *HeuristicAgent) chooseStockRoundAction(ctx *engine.GameContext) []float
 		}
 	}
 
-	// Only par if we don't already hold shares in 2+ companies.
 	companiesHeld := 0
 	for _, shares := range srCtx.PlayerShares {
 		if shares > 0 {
@@ -72,7 +75,7 @@ func (h *HeuristicAgent) chooseStockRoundAction(ctx *engine.GameContext) []float
 		return bestPar.Values[:]
 	}
 
-	// Priority 2: Buy a share of the cheapest floated company with IPO shares.
+	// Priority 2: Buy cheapest IPO share.
 	var bestBuy *engine.Action
 	bestBuyCost := float64(999999)
 	for i := range actions {
@@ -93,8 +96,63 @@ func (h *HeuristicAgent) chooseStockRoundAction(ctx *engine.GameContext) []float
 }
 
 func (h *HeuristicAgent) chooseOperatingRoundAction(ctx *engine.GameContext) []float64 {
-	// Stub: pass during OR. Will be expanded in later steps.
-	return passAction()
+	orStep := ctx.TurnState[engine.TurnActionStep]
+	companyIndex := int(ctx.TurnState[engine.TurnActiveID])
+
+	// Check if company is floated; unfloated companies pass all steps.
+	compState := ctx.StateHistories[ctx.Layout.CompanyPartitions[companyIndex]].Values.RawRowView(0)
+	if compState[engine.CompFloated] == 0 {
+		return passAction()
+	}
+
+	switch orStep {
+	case engine.ORStepTileLay:
+		return h.chooseTileLay(ctx, companyIndex)
+	case engine.ORStepToken:
+		return passAction() // stub
+	case engine.ORStepRoutes:
+		return passAction() // stub until route-finding
+	case engine.ORStepBuyTrain:
+		return passAction() // stub
+	default:
+		return passAction()
+	}
+}
+
+func (h *HeuristicAgent) chooseTileLay(ctx *engine.GameContext, companyIndex int) []float64 {
+	tileCtx := extractTileLayContextFromGameCtx(ctx, companyIndex)
+	actions := engine.LegalTileLayActions(tileCtx)
+
+	if len(actions) == 0 {
+		return passAction()
+	}
+
+	// Pick the first legal tile placement (simple heuristic).
+	// Prefer placements near the company's home hex — but for now, just pick first.
+	return actions[0].Values[:]
+}
+
+// extractTileLayContextFromGameCtx bridges GameContext → TileLayContext.
+func extractTileLayContextFromGameCtx(ctx *engine.GameContext, companyIndex int) *engine.TileLayContext {
+	return engine.ExtractTileLayContext(
+		companyIndex,
+		ctx.StateHistories,
+		ctx.Config,
+		gamedata.Default1889Map(),
+		ctx.Layout,
+	)
+}
+
+// Ensure HeuristicAgent satisfies the Agent interface.
+var _ engine.Agent = (*HeuristicAgent)(nil)
+
+// stateHistoryValue is a helper to read a value from a partition's state.
+func stateHistoryValue(
+	stateHistories []*simulator.StateHistory,
+	partitionIdx int,
+	stateIdx int,
+) float64 {
+	return stateHistories[partitionIdx].Values.At(0, stateIdx)
 }
 
 func passAction() []float64 {

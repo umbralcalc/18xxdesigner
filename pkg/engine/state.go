@@ -27,6 +27,16 @@ const (
 	ActiveCompany = 1.0
 )
 
+// OR sub-step constants. During an operating round, each company goes through
+// these sub-steps in order. TurnActionStep holds the current sub-step.
+const (
+	ORStepTileLay   = 0.0
+	ORStepToken     = 1.0
+	ORStepRoutes    = 2.0 // route running + dividend/withhold decision
+	ORStepBuyTrain  = 3.0
+	ORStepDone      = 4.0 // sentinel: company's turn is complete
+)
+
 // State index constants for the action partition.
 // The action partition carries the chosen action each step.
 const (

@@ -105,20 +105,39 @@ func (t *TurnControllerIteration) transitionToOR(state []float64) {
 }
 
 // advanceOperatingRound handles company turns in the operating round.
+// Each company goes through sub-steps: tile lay → token → routes → buy train.
 func (t *TurnControllerIteration) advanceOperatingRound(state []float64, actionType float64, phase int) {
-	activeCompany := int(state[TurnActiveID])
+	currentStep := state[TurnActionStep]
 
-	// Move to next company. Skip unfloated companies (handled by action layer returning pass).
-	nextCompany := activeCompany + 1
+	// Advance to next OR sub-step.
+	switch currentStep {
+	case ORStepTileLay:
+		state[TurnActionStep] = ORStepToken
+	case ORStepToken:
+		state[TurnActionStep] = ORStepRoutes
+	case ORStepRoutes:
+		state[TurnActionStep] = ORStepBuyTrain
+	case ORStepBuyTrain:
+		state[TurnActionStep] = ORStepDone
+	}
+
+	// If company's turn is done, move to next company.
+	if state[TurnActionStep] == ORStepDone {
+		t.advanceToNextCompany(state)
+	}
+}
+
+// advanceToNextCompany moves to the next company or ends the OR set.
+func (t *TurnControllerIteration) advanceToNextCompany(state []float64) {
+	nextCompany := int(state[TurnActiveID]) + 1
 	if nextCompany >= t.NumCompanies {
 		// All companies have operated. Check if more ORs remain.
 		orNum := int(state[TurnORNumber])
 		orsThisSet := int(state[TurnORsThisSet])
 		if orNum < orsThisSet {
-			// Start next OR.
 			state[TurnORNumber] = float64(orNum + 1)
 			state[TurnActiveID] = 0
-			state[TurnActionStep] = 0
+			state[TurnActionStep] = ORStepTileLay
 		} else {
 			// All ORs done → back to Stock Round.
 			state[TurnRoundType] = RoundStockRound
@@ -129,6 +148,6 @@ func (t *TurnControllerIteration) advanceOperatingRound(state []float64, actionT
 		}
 	} else {
 		state[TurnActiveID] = float64(nextCompany)
-		state[TurnActionStep] = 0
+		state[TurnActionStep] = ORStepTileLay
 	}
 }

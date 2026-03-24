@@ -204,6 +204,44 @@ func TestTurnFSM(t *testing.T) {
 		}
 	})
 
+	t.Run("or_substeps", func(t *testing.T) {
+		turn := &TurnControllerIteration{
+			NumPlayers:   4,
+			NumCompanies: 7,
+			ORsPerPhase:  []int{1, 2, 2, 3, 3, 3},
+		}
+
+		state := make([]float64, TurnStateWidth)
+		state[TurnRoundType] = RoundOperatingRound
+		state[TurnActiveType] = ActiveCompany
+		state[TurnActiveID] = 0
+		state[TurnORNumber] = 1
+		state[TurnORsThisSet] = 1
+		state[TurnActionStep] = ORStepTileLay
+
+		// First company: 4 sub-steps (tile→token→routes→train).
+		turn.advanceOperatingRound(state, ActionPass, 0)
+		if state[TurnActionStep] != ORStepToken {
+			t.Errorf("expected token step, got %v", state[TurnActionStep])
+		}
+		turn.advanceOperatingRound(state, ActionPass, 0)
+		if state[TurnActionStep] != ORStepRoutes {
+			t.Errorf("expected routes step, got %v", state[TurnActionStep])
+		}
+		turn.advanceOperatingRound(state, ActionPass, 0)
+		if state[TurnActionStep] != ORStepBuyTrain {
+			t.Errorf("expected buy train step, got %v", state[TurnActionStep])
+		}
+		turn.advanceOperatingRound(state, ActionPass, 0)
+		// After train step → done → advance to next company at tile step.
+		if state[TurnActiveID] != 1 {
+			t.Errorf("expected company 1, got %v", state[TurnActiveID])
+		}
+		if state[TurnActionStep] != ORStepTileLay {
+			t.Errorf("expected tile lay step for next company, got %v", state[TurnActionStep])
+		}
+	})
+
 	t.Run("or_to_sr", func(t *testing.T) {
 		turn := &TurnControllerIteration{
 			NumPlayers:   4,
@@ -216,16 +254,16 @@ func TestTurnFSM(t *testing.T) {
 		state[TurnActiveType] = ActiveCompany
 		state[TurnActiveID] = 0
 		state[TurnORNumber] = 1
-		state[TurnORsThisSet] = 1 // only 1 OR in phase 2
-		state[TurnGamePhase] = 0
+		state[TurnORsThisSet] = 1
+		state[TurnActionStep] = ORStepTileLay
 
-		// 7 companies pass.
-		for i := 0; i < 7; i++ {
+		// 7 companies × 4 sub-steps = 28 steps to complete one OR.
+		for i := 0; i < 7*4; i++ {
 			turn.advanceOperatingRound(state, ActionPass, 0)
 		}
 
 		if state[TurnRoundType] != RoundStockRound {
-			t.Errorf("expected SR after all companies pass in single OR, got %v", state[TurnRoundType])
+			t.Errorf("expected SR after all companies complete in single OR, got %v", state[TurnRoundType])
 		}
 	})
 
@@ -241,15 +279,14 @@ func TestTurnFSM(t *testing.T) {
 		state[TurnActiveType] = ActiveCompany
 		state[TurnActiveID] = 0
 		state[TurnORNumber] = 1
-		state[TurnORsThisSet] = 2 // 2 ORs in this set
-		state[TurnGamePhase] = 1
+		state[TurnORsThisSet] = 2
+		state[TurnActionStep] = ORStepTileLay
 
-		// First OR: 7 companies.
-		for i := 0; i < 7; i++ {
+		// First OR: 7 companies × 4 sub-steps.
+		for i := 0; i < 7*4; i++ {
 			turn.advanceOperatingRound(state, ActionPass, 1)
 		}
 
-		// Should be in OR 2 now, not back to SR.
 		if state[TurnRoundType] != RoundOperatingRound {
 			t.Errorf("expected still in OR, got %v", state[TurnRoundType])
 		}
@@ -257,8 +294,8 @@ func TestTurnFSM(t *testing.T) {
 			t.Errorf("expected OR number 2, got %v", state[TurnORNumber])
 		}
 
-		// Second OR: 7 companies.
-		for i := 0; i < 7; i++ {
+		// Second OR: 7 companies × 4 sub-steps.
+		for i := 0; i < 7*4; i++ {
 			turn.advanceOperatingRound(state, ActionPass, 1)
 		}
 
