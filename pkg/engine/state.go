@@ -59,8 +59,10 @@ const (
 	ActionWithhold       = 8.0
 	ActionBuyTrain       = 9.0
 	ActionBuyPrivate     = 10.0
-	ActionBidPrivate     = 11.0
+	ActionBidPrivate         = 11.0
 	ActionPrivateAuctionPass = 12.0
+	ActionBuyTrainFromCompany = 13.0 // buy train from another company
+	ActionExchangeTrain      = 14.0 // exchange old train + cash for new from depot
 )
 
 // State index constants for bank partition.

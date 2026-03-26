@@ -43,6 +43,8 @@ func (b *BankIteration) Iterate(
 		b.handleLayTile(state, actionValues)
 	case ActionPayDividends:
 		b.handlePayDividends(state, actionValues)
+	case ActionExchangeTrain:
+		b.handleExchangeTrain(state, actionValues)
 	}
 
 	return state
@@ -100,6 +102,32 @@ func (b *BankIteration) handlePayDividends(state []float64, action []float64) {
 	revenue := action[ActionArg0+1]
 	// All revenue is paid out from the bank to shareholders.
 	state[BankCash] -= revenue
+}
+
+// handleExchangeTrain processes a train exchange: company returns old train to depot,
+// pays cost, and gets new train. Bank receives cash and decreases new train availability.
+func (b *BankIteration) handleExchangeTrain(state []float64, action []float64) {
+	newTrainIdx := int(action[ActionArg0])
+	cost := action[ActionArg0+1]
+
+	if newTrainIdx < 0 || newTrainIdx >= len(b.Config.Trains) {
+		return
+	}
+
+	// Decrease availability of new train.
+	availIdx := BankTrainsBase + newTrainIdx
+	if b.Config.Trains[newTrainIdx].Quantity >= 0 {
+		if state[availIdx] <= 0 {
+			return
+		}
+		state[availIdx] -= 1
+	}
+
+	// Bank receives the exchange cost.
+	state[BankCash] += cost
+
+	// Check for phase advance.
+	b.checkPhaseAdvance(state, newTrainIdx)
 }
 
 func (b *BankIteration) handleLayTile(state []float64, action []float64) {

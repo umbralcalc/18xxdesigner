@@ -2,27 +2,27 @@ package policy
 
 import (
 	"github.com/umbralcalc/stochadex/pkg/simulator"
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
 	"github.com/umbralcalc/ttdesigner/pkg/engine"
+	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
 )
 
-// HeuristicAgent implements a simple rule-based agent for 1889.
+// HeuristicAgent implements a rule-based agent for 1889.
 //
-// Stock Round strategy:
-//   - If cash > 2x cheapest par price and holds < 2 companies, par one.
-//   - If a floated company has IPO shares and we can afford it, buy.
-//   - Otherwise pass.
+// Stock Round:
+//   - Par companies at cheapest price until holding 2+.
+//   - Buy shares of highest-revenue floated company.
+//   - Sell shares of companies with decreasing price (tanking).
 //
-// Operating Round strategy:
-//   - Tile lay: pick the first legal tile placement (if any).
-//   - Token: pass (stub).
-//   - Routes: pass/withhold (stub until route-finding is implemented).
-//   - Buy train: pass (stub).
+// Operating Round:
+//   - Tile: prefer placements on hexes adjacent to own tokens.
+//   - Token: place cheapest available.
+//   - Routes: use OptimalRouteAssignment; pay dividends unless company
+//     needs to save for a train (withhold if revenue < 2x cheapest train cost).
+//   - Trains: buy cheapest available when under train limit.
 type HeuristicAgent struct{}
 
 func (h *HeuristicAgent) ChooseAction(ctx *engine.GameContext) []float64 {
-	turnState := ctx.TurnState
-	roundType := turnState[engine.TurnRoundType]
+	roundType := ctx.TurnState[engine.TurnRoundType]
 
 	switch roundType {
 	case engine.RoundStockRound:
@@ -51,38 +51,49 @@ func (h *HeuristicAgent) chooseStockRoundAction(ctx *engine.GameContext) []float
 		return passAction()
 	}
 
-	// Priority 1: Par a company (cheapest par) if holding < 2 companies.
-	var bestPar *engine.Action
-	bestParCost := float64(999999)
-	for i := range actions {
-		if actions[i].Values[engine.ActionType] == engine.ActionParCompany {
-			cost := actions[i].Values[engine.ActionArg0+1] * actions[i].Values[engine.ActionArg0+2]
-			if cost < bestParCost {
-				bestParCost = cost
-				a := actions[i]
-				bestPar = &a
-			}
-		}
-	}
-
+	// Count companies held.
 	companiesHeld := 0
 	for _, shares := range srCtx.PlayerShares {
 		if shares > 0 {
 			companiesHeld++
 		}
 	}
-	if bestPar != nil && companiesHeld < 2 {
-		return bestPar.Values[:]
+
+	// Priority 1: Par a company if holding fewer than 2.
+	if companiesHeld < 2 {
+		var bestPar *engine.Action
+		bestParCost := float64(999999)
+		for i := range actions {
+			if actions[i].Values[engine.ActionType] == engine.ActionParCompany {
+				cost := actions[i].Values[engine.ActionArg0+1] * actions[i].Values[engine.ActionArg0+2]
+				if cost < bestParCost {
+					bestParCost = cost
+					a := actions[i]
+					bestPar = &a
+				}
+			}
+		}
+		if bestPar != nil {
+			return bestPar.Values[:]
+		}
 	}
 
-	// Priority 2: Buy cheapest IPO share.
+	// Collect last revenue per company for scoring buys.
+	companyRevenue := make([]float64, len(ctx.Config.Companies))
+	for i := range ctx.Config.Companies {
+		cs := ctx.StateHistories[ctx.Layout.CompanyPartitions[i]].Values.RawRowView(0)
+		companyRevenue[i] = cs[engine.CompLastRevenue]
+	}
+
+	// Priority 2: Buy share of highest-revenue floated company.
 	var bestBuy *engine.Action
-	bestBuyCost := float64(999999)
+	bestBuyScore := -1.0
 	for i := range actions {
 		if actions[i].Values[engine.ActionType] == engine.ActionBuyShare {
-			cost := actions[i].Values[engine.ActionArg0+1]
-			if cost < bestBuyCost {
-				bestBuyCost = cost
+			compID := int(actions[i].Values[engine.ActionArg0])
+			score := companyRevenue[compID]
+			if score > bestBuyScore {
+				bestBuyScore = score
 				a := actions[i]
 				bestBuy = &a
 			}
@@ -92,6 +103,19 @@ func (h *HeuristicAgent) chooseStockRoundAction(ctx *engine.GameContext) []float
 		return bestBuy.Values[:]
 	}
 
+	// Priority 3: Sell shares of tanking companies (withheld last OR and share price declining).
+	for i := range actions {
+		if actions[i].Values[engine.ActionType] == engine.ActionSellShares {
+			compID := int(actions[i].Values[engine.ActionArg0])
+			cs := ctx.StateHistories[ctx.Layout.CompanyPartitions[compID]].Values.RawRowView(0)
+			// Only sell if company has operated and is withholding (revenue goes to treasury, not shareholders).
+			hasOperated := cs[engine.CompOperatedThisOR] > 0 || cs[engine.CompLastRevenue] > 0
+			if hasOperated && companyRevenue[compID] == 0 && srCtx.PlayerShares[compID] > 2 {
+				return actions[i].Values[:]
+			}
+		}
+	}
+
 	return passAction()
 }
 
@@ -99,7 +123,6 @@ func (h *HeuristicAgent) chooseOperatingRoundAction(ctx *engine.GameContext) []f
 	orStep := ctx.TurnState[engine.TurnActionStep]
 	companyIndex := int(ctx.TurnState[engine.TurnActiveID])
 
-	// Check if company is floated; unfloated companies pass all steps.
 	compState := ctx.StateHistories[ctx.Layout.CompanyPartitions[companyIndex]].Values.RawRowView(0)
 	if compState[engine.CompFloated] == 0 {
 		return passAction()
@@ -120,16 +143,64 @@ func (h *HeuristicAgent) chooseOperatingRoundAction(ctx *engine.GameContext) []f
 }
 
 func (h *HeuristicAgent) chooseTileLay(ctx *engine.GameContext, companyIndex int) []float64 {
-	tileCtx := extractTileLayContextFromGameCtx(ctx, companyIndex)
+	tileCtx := engine.ExtractTileLayContext(
+		companyIndex,
+		ctx.StateHistories,
+		ctx.Config,
+		gamedata.Default1889Map(),
+		ctx.Layout,
+	)
 	actions := engine.LegalTileLayActions(tileCtx)
-
 	if len(actions) == 0 {
 		return passAction()
 	}
 
-	// Pick the first legal tile placement (simple heuristic).
-	// Prefer placements near the company's home hex — but for now, just pick first.
-	return actions[0].Values[:]
+	// Prefer tiles on hexes adjacent to company tokens (extends routes).
+	mapState := ctx.StateHistories[ctx.Layout.MapPartition].Values.RawRowView(0)
+	hexes := gamedata.Default1889Map()
+	adjacency := gamedata.Default1889Adjacency()
+	companyBit := float64(int(1) << companyIndex)
+
+	tokenHexes := make(map[int]bool)
+	for i := range hexes {
+		tokens := mapState[engine.MapTokenIdx(i)]
+		if int(tokens)&int(companyBit) != 0 {
+			tokenHexes[i] = true
+		}
+	}
+
+	// Build hex ID → index lookup.
+	hexIDToIdx := make(map[string]int, len(hexes))
+	for i := range hexes {
+		hexIDToIdx[hexes[i].ID] = i
+	}
+
+	// Score each action: 2 if on token hex, 1 if adjacent to token hex, 0 otherwise.
+	bestScore := -1
+	bestIdx := 0
+	for i := range actions {
+		hexIdx := int(actions[i].Values[engine.ActionArg0])
+		score := 0
+		if tokenHexes[hexIdx] {
+			score = 2
+		} else if adj, ok := adjacency[hexes[hexIdx].ID]; ok {
+			for _, neighborID := range adj {
+				if neighborID == "" {
+					continue
+				}
+				if j, ok := hexIDToIdx[neighborID]; ok && tokenHexes[j] {
+					score = 1
+					break
+				}
+			}
+		}
+		if score > bestScore {
+			bestScore = score
+			bestIdx = i
+		}
+	}
+
+	return actions[bestIdx].Values[:]
 }
 
 func (h *HeuristicAgent) chooseToken(ctx *engine.GameContext, companyIndex int) []float64 {
@@ -144,7 +215,6 @@ func (h *HeuristicAgent) chooseToken(ctx *engine.GameContext, companyIndex int) 
 	if len(actions) == 0 {
 		return passAction()
 	}
-	// Place cheapest token available.
 	return actions[0].Values[:]
 }
 
@@ -160,7 +230,6 @@ func (h *HeuristicAgent) chooseRouteAction(ctx *engine.GameContext, companyIndex
 
 	graph := engine.BuildTrackGraph(mapState, hexes, tileDefs, adjacency)
 
-	// Collect trains held by this company.
 	var trains []int
 	var distances []int
 	for i, tr := range ctx.Config.Trains {
@@ -181,24 +250,22 @@ func (h *HeuristicAgent) chooseRouteAction(ctx *engine.GameContext, companyIndex
 		return passAction()
 	}
 
-	// Heuristic: pay dividends if revenue > 2x cheapest needed train cost, else withhold.
-	// Simple version: always pay dividends if we have revenue.
-	action := make([]float64, engine.ActionStateWidth)
-	needsTrain := len(trains) == 0
+	// Withhold if company needs to save for a train purchase.
 	treasury := compState[engine.CompTreasury]
+	cheapestTrainCost := h.cheapestAvailableTrainCost(ctx)
 
-	if needsTrain && treasury < float64(totalRevenue)*2 {
-		// Withhold to build treasury.
+	if cheapestTrainCost > 0 && treasury+float64(totalRevenue) < float64(cheapestTrainCost)*2 {
+		action := make([]float64, engine.ActionStateWidth)
 		action[engine.ActionType] = engine.ActionWithhold
 		action[engine.ActionArg0] = float64(companyIndex)
 		action[engine.ActionArg0+1] = float64(totalRevenue)
-	} else {
-		// Pay dividends.
-		action[engine.ActionType] = engine.ActionPayDividends
-		action[engine.ActionArg0] = float64(companyIndex)
-		action[engine.ActionArg0+1] = float64(totalRevenue)
+		return action
 	}
 
+	action := make([]float64, engine.ActionStateWidth)
+	action[engine.ActionType] = engine.ActionPayDividends
+	action[engine.ActionArg0] = float64(companyIndex)
+	action[engine.ActionArg0+1] = float64(totalRevenue)
 	return action
 }
 
@@ -207,25 +274,19 @@ func (h *HeuristicAgent) chooseBuyTrain(ctx *engine.GameContext, companyIndex in
 	bankState := ctx.StateHistories[ctx.Layout.BankPartition].Values.RawRowView(0)
 	treasury := compState[engine.CompTreasury]
 
-	// Count trains held.
 	totalTrains := 0
 	for i := range ctx.Config.Trains {
 		totalTrains += int(compState[engine.CompTrainsBase+i])
 	}
 
-	// Check train limit for current phase.
 	gamePhase := int(bankState[engine.BankTrainPhase])
 	trainLimit := ctx.Config.Phases[gamePhase].TrainLimit
 
-	// Must own at least one train. Buy cheapest available.
-	// Also buy if under train limit (simple heuristic).
 	if totalTrains >= trainLimit {
 		return passAction()
 	}
-	if totalTrains > 0 {
-		return passAction() // already has a train, don't buy more for now
-	}
 
+	// Buy cheapest available train that the company can afford.
 	for i, tr := range ctx.Config.Trains {
 		avail := bankState[engine.BankTrainsBase+i]
 		if avail <= 0 {
@@ -245,15 +306,15 @@ func (h *HeuristicAgent) chooseBuyTrain(ctx *engine.GameContext, companyIndex in
 	return passAction()
 }
 
-// extractTileLayContextFromGameCtx bridges GameContext → TileLayContext.
-func extractTileLayContextFromGameCtx(ctx *engine.GameContext, companyIndex int) *engine.TileLayContext {
-	return engine.ExtractTileLayContext(
-		companyIndex,
-		ctx.StateHistories,
-		ctx.Config,
-		gamedata.Default1889Map(),
-		ctx.Layout,
-	)
+// cheapestAvailableTrainCost returns the cost of the cheapest train in the depot.
+func (h *HeuristicAgent) cheapestAvailableTrainCost(ctx *engine.GameContext) int {
+	bankState := ctx.StateHistories[ctx.Layout.BankPartition].Values.RawRowView(0)
+	for i, tr := range ctx.Config.Trains {
+		if bankState[engine.BankTrainsBase+i] > 0 {
+			return tr.Price
+		}
+	}
+	return 0
 }
 
 // Ensure HeuristicAgent satisfies the Agent interface.

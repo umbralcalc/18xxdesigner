@@ -32,9 +32,6 @@ func (c *CompanyIteration) Iterate(
 	bankValues := params.Get("bank_values")
 	actionType := actionValues[ActionType]
 
-	// Check for train rusting every step based on current bank phase.
-	c.checkTrainRusting(state, bankValues)
-
 	// Handle actions directed at this company.
 	switch actionType {
 	case ActionParCompany:
@@ -51,7 +48,15 @@ func (c *CompanyIteration) Iterate(
 		c.handleWithhold(state, actionValues, turnValues)
 	case ActionPlaceToken:
 		c.handlePlaceToken(state, actionValues, turnValues)
+	case ActionBuyTrainFromCompany:
+		c.handleBuyTrainFromCompany(state, actionValues, turnValues)
+	case ActionExchangeTrain:
+		c.handleExchangeTrain(state, actionValues, turnValues)
 	}
+
+	// Check for train rusting after processing actions (bank phase may have
+	// advanced this step via upstream params).
+	c.checkTrainRusting(state, bankValues)
 
 	return state
 }
@@ -128,19 +133,59 @@ func (c *CompanyIteration) handleWithhold(state []float64, action, turn []float6
 }
 
 // checkTrainRusting removes trains that have rusted based on the current bank phase.
-// A train rusts when bank supply for that train type is 0 and its RustsOn field
-// matches a train type that has been purchased (triggering a phase advance).
+// A train rusts when the train type named in its RustsOn field has been purchased,
+// which triggers a phase advance. We detect this by checking the current phase
+// against the phase triggered by the RustsOn train type.
 func (c *CompanyIteration) checkTrainRusting(state []float64, bankValues []float64) {
+	currentPhase := int(bankValues[BankTrainPhase])
 	for i, train := range c.Config.Trains {
-		if train.RustsOn == "" {
+		if train.RustsOn == "" || state[CompTrainsBase+i] <= 0 {
 			continue
 		}
-		// Check if bank availability for this train type is 0 (rusted).
-		bankAvail := bankValues[BankTrainsBase+i]
-		if bankAvail <= 0 && state[CompTrainsBase+i] > 0 {
-			state[CompTrainsBase+i] = 0
+		// Find the phase triggered by the RustsOn train type.
+		for p, phase := range c.Config.Phases {
+			if phase.TriggerTrain == train.RustsOn && currentPhase >= p {
+				state[CompTrainsBase+i] = 0
+				break
+			}
 		}
 	}
+}
+
+// handleBuyTrainFromCompany processes an inter-company train sale.
+// Action layout: [type, trainIdx, cost, sellerCompanyIdx]
+// The active company (buyer) pays cost and gains the train.
+// The seller company loses the train and gains the cash.
+func (c *CompanyIteration) handleBuyTrainFromCompany(state []float64, action, turn []float64) {
+	buyerIdx := int(turn[TurnActiveID])
+	trainIdx := int(action[ActionArg0])
+	cost := action[ActionArg0+1]
+	sellerIdx := int(action[ActionArg0+2])
+
+	if c.CompanyIndex == buyerIdx {
+		state[CompTreasury] -= cost
+		state[CompTrainsBase+trainIdx] += 1
+	}
+	if c.CompanyIndex == sellerIdx {
+		state[CompTreasury] += cost
+		state[CompTrainsBase+trainIdx] -= 1
+	}
+}
+
+// handleExchangeTrain processes a train exchange with the depot.
+// Action layout: [type, newTrainIdx, cost, oldTrainIdx]
+// The active company pays cost, returns old train, and gets new train.
+func (c *CompanyIteration) handleExchangeTrain(state []float64, action, turn []float64) {
+	if turn[TurnActiveType] != ActiveCompany || int(turn[TurnActiveID]) != c.CompanyIndex {
+		return
+	}
+	newTrainIdx := int(action[ActionArg0])
+	cost := action[ActionArg0+1]
+	oldTrainIdx := int(action[ActionArg0+2])
+
+	state[CompTreasury] -= cost
+	state[CompTrainsBase+oldTrainIdx] -= 1
+	state[CompTrainsBase+newTrainIdx] += 1
 }
 
 func (c *CompanyIteration) handlePlaceToken(state []float64, action, turn []float64) {

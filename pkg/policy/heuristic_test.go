@@ -69,6 +69,46 @@ func TestHeuristicAgent(t *testing.T) {
 		}
 	})
 
+	t.Run("100_games_terminate", func(t *testing.T) {
+		for _, numPlayers := range []int{2, 4} {
+			minSteps := 99999
+			maxSteps := 0
+			stuck := 0
+
+			for game := 0; game < 50; game++ {
+				builder := engine.NewGameBuilder(numPlayers, &HeuristicAgent{})
+				settings, implementations := builder.Build()
+				layout := builder.Layout()
+
+				implementations.TerminationCondition = &engine.OrTerminationCondition{
+					Conditions: []simulator.TerminationCondition{
+						&engine.BankBrokenTerminationCondition{BankPartitionIndex: layout.BankPartition},
+						&simulator.NumberOfStepsTerminationCondition{MaxNumberOfSteps: 5000},
+					},
+				}
+
+				coordinator := simulator.NewPartitionCoordinator(settings, implementations)
+				coordinator.Run()
+
+				steps := int(coordinator.Shared.TimestepsHistory.CurrentStepNumber)
+				if steps >= 5000 {
+					stuck++
+				}
+				if steps < minSteps {
+					minSteps = steps
+				}
+				if steps > maxSteps {
+					maxSteps = steps
+				}
+			}
+
+			t.Logf("%d-player: min=%d max=%d stuck=%d", numPlayers, minSteps, maxSteps, stuck)
+			if stuck > 0 {
+				t.Errorf("%d-player: %d/50 games did not terminate", numPlayers, stuck)
+			}
+		}
+	})
+
 	t.Run("pars_a_company_in_sr", func(t *testing.T) {
 		builder := engine.NewGameBuilder(4, &HeuristicAgent{})
 		settings, implementations := builder.Build()

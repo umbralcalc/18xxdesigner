@@ -329,8 +329,15 @@ func (g *TrackGraph) dfsRoutes(
 					visitedHexes, stoppedAt, path, stopCount, currentRevenue, routes)
 				delete(visitedHexes, next.HexIdx)
 			} else {
+				// Same hex, different edge — mark this edge as visited to prevent intra-hex cycles.
+				edgeKey := next.HexIdx*10 + next.Edge
+				if visitedHexes[edgeKey+1000000] {
+					continue
+				}
+				visitedHexes[edgeKey+1000000] = true
 				g.dfsRoutes(next, current, companyID, maxStops, gamePhase,
 					visitedHexes, stoppedAt, path, stopCount, currentRevenue, routes)
+				delete(visitedHexes, edgeKey+1000000)
 			}
 		}
 	}

@@ -118,7 +118,11 @@ func (t *TurnControllerIteration) advanceOperatingRound(state []float64, actionT
 	case ORStepRoutes:
 		state[TurnActionStep] = ORStepBuyTrain
 	case ORStepBuyTrain:
-		state[TurnActionStep] = ORStepDone
+		// Stay at BuyTrain if a train was bought (allow multiple purchases).
+		// Only advance to Done on pass.
+		if actionType == ActionPass {
+			state[TurnActionStep] = ORStepDone
+		}
 	}
 
 	// If company's turn is done, move to next company.
