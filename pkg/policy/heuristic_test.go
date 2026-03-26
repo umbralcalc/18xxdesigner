@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/umbralcalc/stochadex/pkg/simulator"
-	"github.com/umbralcalc/ttdesigner/pkg/engine"
+	"github.com/umbralcalc/18xxdesigner/pkg/engine"
 )
 
 func TestHeuristicAgent(t *testing.T) {

@@ -2,7 +2,7 @@ package engine
 
 import (
 	"github.com/umbralcalc/stochadex/pkg/simulator"
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
+	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 )
 
 // PlayerIteration tracks a single player's cash, shares, privates, and cert count.

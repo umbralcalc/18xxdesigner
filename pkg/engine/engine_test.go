@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/umbralcalc/stochadex/pkg/simulator"
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
+	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 )
 
 func TestBuildCompiles(t *testing.T) {

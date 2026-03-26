@@ -2,8 +2,8 @@ package policy
 
 import (
 	"github.com/umbralcalc/stochadex/pkg/simulator"
-	"github.com/umbralcalc/ttdesigner/pkg/engine"
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
+	"github.com/umbralcalc/18xxdesigner/pkg/engine"
+	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 )
 
 // HeuristicAgent implements a rule-based agent for 1889.

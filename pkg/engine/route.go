@@ -1,6 +1,6 @@
 package engine
 
-import "github.com/umbralcalc/ttdesigner/pkg/gamedata"
+import "github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 
 // TrackGraph represents the connected track network built from the current map state.
 // It is rebuilt each time route-finding is needed (typically once per company per OR).

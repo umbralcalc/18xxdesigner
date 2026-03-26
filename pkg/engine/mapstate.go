@@ -2,7 +2,7 @@ package engine
 
 import (
 	"github.com/umbralcalc/stochadex/pkg/simulator"
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
+	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 )
 
 // MapIteration tracks the hex grid state: which tile is placed on each hex,

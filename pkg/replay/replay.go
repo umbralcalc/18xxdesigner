@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/umbralcalc/ttdesigner/pkg/engine"
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
+	"github.com/umbralcalc/18xxdesigner/pkg/engine"
+	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 )
 
 // ReplayAgent replays a parsed transcript as engine actions.

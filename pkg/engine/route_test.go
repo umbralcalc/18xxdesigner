@@ -3,7 +3,7 @@ package engine
 import (
 	"testing"
 
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
+	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 )
 
 // makeTestGraph builds a small track graph for testing.

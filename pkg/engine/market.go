@@ -2,7 +2,7 @@ package engine
 
 import (
 	"github.com/umbralcalc/stochadex/pkg/simulator"
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
+	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 )
 
 // MarketIteration tracks share price positions for all companies on the stock market grid.

@@ -1,8 +1,8 @@
 package engine
 
 import (
+	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 	"github.com/umbralcalc/stochadex/pkg/simulator"
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
 )
 
 // GameContext provides everything an agent needs to make a decision.

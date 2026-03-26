@@ -4,7 +4,7 @@ import (
 	"math/bits"
 
 	"github.com/umbralcalc/stochadex/pkg/simulator"
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
+	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 )
 
 // TokenContext holds state needed for token placement legal move generation.

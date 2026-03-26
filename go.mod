@@ -1,4 +1,4 @@
-module github.com/umbralcalc/ttdesigner
+module github.com/umbralcalc/18xxdesigner
 
 go 1.25.2
 

@@ -1,8 +1,8 @@
 package engine
 
 import (
+	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
 	"github.com/umbralcalc/stochadex/pkg/simulator"
-	"github.com/umbralcalc/ttdesigner/pkg/gamedata"
 )
 
 // BankIteration tracks the bank's cash pool, available trains, and available tiles.
