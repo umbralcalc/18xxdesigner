@@ -22,7 +22,7 @@ This runs 100 four-player games with heuristic agents and prints a balance repor
 ### `run` — batch simulation
 
 ```bash
-18xxdesigner run [flags]
+go run ./cmd/18xxdesigner run [flags]
 ```
 
 | Flag | Default | Description |
@@ -37,7 +37,7 @@ This runs 100 four-player games with heuristic agents and prints a balance repor
 ### `compare` — variant comparison
 
 ```bash
-18xxdesigner compare --variant tweaked.yaml [flags]
+go run ./cmd/18xxdesigner compare --variant tweaked.yaml [flags]
 ```
 
 Runs the baseline 1889 config and a YAML variant, then produces a side-by-side report with deltas for game length, Gini coefficient, comeback rate, and per-company float rates.
@@ -53,7 +53,7 @@ Runs the baseline 1889 config and a YAML variant, then produces a side-by-side r
 ### `replay` — transcript playback
 
 ```bash
-18xxdesigner replay --transcript game.log
+go run ./cmd/18xxdesigner replay --transcript game.log
 ```
 
 Replays an [18xx.games](https://18xx.games) JSON game log move-by-move through the engine, printing final state and any rule mismatches.
