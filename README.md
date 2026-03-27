@@ -2,7 +2,7 @@
 
 A simulation-based balance auditor for the 18xx train game **1889: History of Shikoku Railways**, built on the [stochadex](https://github.com/umbralcalc/stochadex) simulation SDK.
 
-Run thousands of games with AI agents, then inspect Markdown reports covering wealth distribution, company viability, map utilisation, and more. Tweak game parameters in YAML and compare variants side-by-side to see what changes actually do to balance.
+Run thousands of games with gameplay agents, then inspect Markdown reports covering wealth distribution, company viability, map utilisation, and more. Tweak game parameters in YAML and compare variants side-by-side to see what changes actually do to balance.
 
 ---
 
@@ -111,7 +111,7 @@ The stochadex coordinator's channel-based blocking ensures sequential execution 
 | Partition | StateWidth | Contents |
 |-----------|-----------|----------|
 | `turn` | 8 | FSM: game phase, round type, active entity, action type |
-| `action` | 20 | Action vector from AI agent |
+| `action` | 20 | Action vector from gameplay agent |
 | `bank` | ~30 | Cash pool, train/tile availability, phase tracking |
 | `market` | 14 | 7 companies × (row, col) on stock price grid |
 | `map` | 72 | 24 hexes × (tile ID, orientation, token bitfield) |
@@ -124,7 +124,7 @@ The stochadex coordinator's channel-based blocking ensures sequential execution 
 pkg/
   gamedata/    Pure data: company/train/tile/market definitions, YAML config loader
   engine/      Game engine: turn FSM, state partitions, legal moves, route finding
-  policy/      AI agents: heuristic (fast) and MCTS (strong)
+  policy/      Gameplay agents: heuristic (fast) and MCTS (strong)
   analysis/    Batch runner, balance metrics, Markdown report generation
   replay/      Transcript parser and replay agent for 18xx.games logs
 cmd/
@@ -133,7 +133,7 @@ cmd/
 
 ---
 
-## AI Agents
+## Gameplay Agents
 
 ### Heuristic
 

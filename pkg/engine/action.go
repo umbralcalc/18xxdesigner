@@ -16,7 +16,7 @@ type GameContext struct {
 	NumPlayers       int
 }
 
-// Agent is the interface that AI policies implement to choose actions.
+// Agent is the interface that gameplay policies implement to choose actions.
 type Agent interface {
 	// ChooseAction selects an action given the current game state.
 	// Returns the action as a float64 slice of length ActionStateWidth.

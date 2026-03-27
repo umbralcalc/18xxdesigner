@@ -9,18 +9,18 @@ import (
 
 // RunResult captures the outcome of a single simulation.
 type RunResult struct {
-	Seed           int64
-	Steps          int
-	BankCash       float64
+	Seed            int64
+	Steps           int
+	BankCash        float64
 	PortfolioValues []float64 // per player
 	CompanyFloated  []bool    // per company
-	CompanySurvived []bool   // floated and has trains at end
+	CompanySurvived []bool    // floated and has trains at end
 	CompanyRevenue  []float64 // last revenue per company
-	HexTileIDs     []int     // tile ID placed on each hex (-1 = empty)
-	WinnerIndex    int       // player with highest portfolio
+	HexTileIDs      []int     // tile ID placed on each hex (-1 = empty)
+	WinnerIndex     int       // player with highest portfolio
 }
 
-// AgentType selects which AI agent to use for simulations.
+// AgentType selects which gameplay agent to use for simulations.
 type AgentType int
 
 const (
