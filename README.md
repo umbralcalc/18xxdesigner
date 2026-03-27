@@ -1,4 +1,4 @@
-# Compass: 1889 Board Game Balance Auditor
+# 18xxdesigner: 1889 Board Game Balance Auditor
 
 A simulation-based balance auditor for the 18xx train game **1889** (Shikoku), built on the [stochadex](https://github.com/umbralcalc/stochadex) SDK. The goal is to model the full game as a set of stochadex partitions, run thousands of games with AI agents, and produce balance reports that tell a game designer whether rule/parameter changes improve or degrade the game.
 
@@ -41,7 +41,7 @@ pkg/
     runner.go      # Comparative simulation runner (baseline vs variant)
     report.go      # Markdown report generator
 cmd/
-  compass/
+  18xxdesigner/
     main.go        # CLI: run, compare, replay subcommands
 ```
 
@@ -136,8 +136,8 @@ cmd/
 - `analysis/metrics.go`: Gini coefficient, game length distribution, company float/survival rates, hex utilization, comeback potential, opening convergence
 - `analysis/runner.go`: run N simulations, collect `RunResult` structs
 - `analysis/report.go`: generate Markdown balance report
-- `cmd/compass/main.go`: `run`, `compare`, `replay` subcommands
-- **Test:** `compass run --config 1889.yaml --players 4 --sims 100` produces valid report
+- `cmd/18xxdesigner/main.go`: `run`, `compare`, `replay` subcommands
+- **Test:** `18xxdesigner run --config 1889.yaml --players 4 --sims 100` produces valid report
 
 ---
 
