@@ -4,6 +4,8 @@ github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aN
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/umbralcalc/stochadex v0.0.0-20260329101819-139d2f8ca54e h1:8dLI554Ja1+92tNvnNAIgMrOKenzmewg6UwQR6dHHw0=
 github.com/umbralcalc/stochadex v0.0.0-20260329101819-139d2f8ca54e/go.mod h1:HC1JOujJssk+AxAyidwznH6e5CazlRcoP8mHbbQWumw=
+github.com/umbralcalc/stochadex v0.0.0-20260401060408-bfa08abd7fcb h1:PuNCbr9SSQOaw4/fLQyfaXcAFzFfq1r9LwCa+0CD7l4=
+github.com/umbralcalc/stochadex v0.0.0-20260401060408-bfa08abd7fcb/go.mod h1:HC1JOujJssk+AxAyidwznH6e5CazlRcoP8mHbbQWumw=
 gonum.org/v1/gonum v0.16.0 h1:5+ul4Swaf3ESvrOnidPp4GZbzf0mxVQpDCYUQE7OJfk=
 gonum.org/v1/gonum v0.16.0/go.mod h1:fef3am4MQ93R2HHpKnLk4/Tbh/s0+wqD5nfa6Pnwy4E=
 google.golang.org/protobuf v1.36.9 h1:w2gp2mA27hUeUzj9Ex9FBjsBm40zfaDtEWow293U7Iw=
