@@ -123,6 +123,10 @@ func TestMCTSPlayoutPartitions(t *testing.T) {
 			outerSettings, outerImpls)
 		outerCoordinator.Run()
 
+		if err := simulator.RunWithHarnesses(outerSettings, outerImpls); err != nil {
+			t.Fatalf("MCTS playout partitions harness: %v", err)
+		}
+
 		// Verify no NaN in statistics partition (index 2).
 		statsState := outerCoordinator.Shared.StateHistories[2].Values.RawRowView(0)
 		for i, v := range statsState {
