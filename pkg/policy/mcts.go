@@ -194,7 +194,7 @@ func (p *PlayoutActionIteration) Iterate(
 
 // NewMCTSPlayoutPartitions creates partition configs for an MCTS search
 // using embedded game simulations, following the stochadex
-// analysis.NewEvolutionStrategyOptimisationPartitions pattern.
+// macros.NewEvolutionStrategyOptimisationPartitions pattern.
 //
 // Partitions:
 //  1. action_selector — UCB1 selection over candidate actions
