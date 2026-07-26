@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math/rand/v2"
 
-	"github.com/umbralcalc/stochadex/pkg/simulator"
 	"github.com/umbralcalc/18xxdesigner/pkg/gamedata"
+	"github.com/umbralcalc/stochadex/pkg/simulator"
 )
 
 // GameBuilder wires all partitions together via the stochadex ConfigGenerator.
@@ -45,8 +45,12 @@ func playerPartName(i int) string  { return fmt.Sprintf("player_%d", i) }
 func (b *GameBuilder) Layout() *PartitionLayout {
 	numCompanies := len(b.Config.Companies)
 	layout := &PartitionLayout{
-		TurnPartition:     0,
-		ActionPartition:   1,
+		// action is registered before turn: turn reads the action taken this
+		// step (within-step), while action reads turn's previous state (lag-1).
+		// Ordering producers before consumers is what lets the engine run under
+		// simulator.InlineExecution.
+		ActionPartition:   0,
+		TurnPartition:     1,
 		BankPartition:     2,
 		MarketPartition:   3,
 		MapPartition:      4,
@@ -74,27 +78,6 @@ func (b *GameBuilder) Build() (*simulator.Settings, *simulator.Implementations) 
 		orsPerPhase[i] = p.ORsPerSR
 	}
 
-	// --- Turn partition ---
-	turnInit := make([]float64, TurnStateWidth)
-	turnInit[TurnRoundType] = RoundPrivateAuction
-	turnInit[TurnActiveType] = ActivePlayer
-	turnInit[TurnActiveID] = 0
-
-	gen.SetPartition(&simulator.PartitionConfig{
-		Name: PartTurn,
-		Iteration: &TurnControllerIteration{
-			NumPlayers:   b.NumPlayers,
-			NumCompanies: numCompanies,
-			ORsPerPhase:  orsPerPhase,
-		},
-		Params:          simulator.Params{Map: map[string][]float64{}},
-		ParamsFromUpstream: map[string]simulator.NamedUpstreamConfig{
-			"action_values": {Upstream: PartAction},
-		},
-		InitStateValues:   turnInit,
-		StateHistoryDepth: 1,
-	})
-
 	layout := b.Layout()
 
 	// --- Action partition ---
@@ -108,8 +91,29 @@ func (b *GameBuilder) Build() (*simulator.Settings, *simulator.Implementations) 
 			MarketGrid:    b.Market,
 			NumPlayers:    b.NumPlayers,
 		},
-		Params:          simulator.Params{Map: map[string][]float64{}},
-		InitStateValues: make([]float64, ActionStateWidth),
+		Params:            simulator.Params{Map: map[string][]float64{}},
+		InitStateValues:   make([]float64, ActionStateWidth),
+		StateHistoryDepth: 1,
+	})
+
+	// --- Turn partition ---
+	turnInit := make([]float64, TurnStateWidth)
+	turnInit[TurnRoundType] = RoundPrivateAuction
+	turnInit[TurnActiveType] = ActivePlayer
+	turnInit[TurnActiveID] = 0
+
+	gen.SetPartition(&simulator.PartitionConfig{
+		Name: PartTurn,
+		Iteration: &TurnControllerIteration{
+			NumPlayers:   b.NumPlayers,
+			NumCompanies: numCompanies,
+			ORsPerPhase:  orsPerPhase,
+		},
+		Params: simulator.Params{Map: map[string][]float64{}},
+		ParamsFromUpstream: map[string]simulator.NamedUpstreamConfig{
+			"action_values": {Upstream: PartAction},
+		},
+		InitStateValues:   turnInit,
 		StateHistoryDepth: 1,
 	})
 
@@ -203,7 +207,13 @@ func (b *GameBuilder) Build() (*simulator.Settings, *simulator.Implementations) 
 		InitTimeValue:        0.0,
 	})
 
-	return gen.GenerateConfigs()
+	settings, implementations := gen.GenerateConfigs()
+	// Partitions are registered producers-first, so a step can be run straight
+	// through without the per-step goroutine round-trip the default strategy
+	// pays. InlineExecution panics if that ordering is ever broken, so this
+	// cannot silently start reading stale upstream values.
+	implementations.ExecutionStrategy = &simulator.InlineExecution{}
+	return settings, implementations
 }
 
 // initPlayerStates returns per-player init state vectors.

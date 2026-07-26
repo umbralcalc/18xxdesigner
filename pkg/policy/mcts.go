@@ -103,7 +103,8 @@ type MCTSStatisticsIteration struct {
 func (m *MCTSStatisticsIteration) Configure(
 	partitionIndex int,
 	settings *simulator.Settings,
-) {}
+) {
+}
 
 func (m *MCTSStatisticsIteration) Iterate(
 	params *simulator.Params,
@@ -383,6 +384,9 @@ func (m *MCTSAgent) ChooseAction(ctx *engine.GameContext) []float64 {
 	}
 
 	settings, impls := gen.GenerateConfigs()
+	// selector -> playout -> statistics is a strict order, so inline execution
+	// applies here too.
+	impls.ExecutionStrategy = &simulator.InlineExecution{}
 	coordinator := simulator.NewPartitionCoordinator(settings, impls)
 	coordinator.Run()
 
