@@ -3,7 +3,7 @@ module github.com/umbralcalc/18xxdesigner
 go 1.25.2
 
 require (
-	github.com/umbralcalc/stochadex v0.12.0
+	github.com/umbralcalc/stochadex v0.13.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
