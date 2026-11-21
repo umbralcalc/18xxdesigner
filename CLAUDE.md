@@ -42,31 +42,30 @@ type Iteration interface {
 Simulations are defined in YAML and run via the stochadex CLI, which generates and executes Go code.
 
 ```yaml
-main:
-  partitions:
-  - name: my_partition              # unique name
-    iteration: myVar                # references a variable from extra_vars
-    params:
-      some_param: [1.0, 2.0]       # all param values are []float64
-    params_from_upstream:           # wire upstream partition output → this partition's params
-      latest_values:
-        upstream: other_partition   # name of the upstream partition
-    params_as_partitions:           # reference partition names as param values (resolved to indices)
-      data_partition: [some_partition]
-    init_state_values: [0.0, 0.0]  # initial state (determines state_width)
-    state_history_depth: 1          # rolling window size
-    seed: 1234                      # RNG seed (0 = no randomness needed)
-    extra_packages:                 # Go import paths
-    - github.com/umbralcalc/stochadex/pkg/continuous
-    extra_vars:                     # Go variable declarations
-    - myVar: "&continuous.WienerProcessIteration{}"
+partitions:
+- name: my_partition              # unique name
+  iteration: myVar                # references a variable from extra_vars
+  params:
+    some_param: [1.0, 2.0]       # all param values are []float64
+  params_from_upstream:           # wire upstream partition output → this partition's params
+    latest_values:
+      upstream: other_partition   # name of the upstream partition
+  params_as_partitions:           # reference partition names as param values (resolved to indices)
+    data_partition: [some_partition]
+  init_state_values: [0.0, 0.0]  # initial state (determines state_width)
+  state_history_depth: 1          # rolling window size
+  seed: 1234                      # RNG seed (0 = no randomness needed)
+  extra_packages:                 # Go import paths
+  - github.com/umbralcalc/stochadex/pkg/continuous
+  extra_vars:                     # Go variable declarations
+  - myVar: "&continuous.WienerProcessIteration{}"
 
-  simulation:
-    output_condition: "&simulator.EveryStepOutputCondition{}"
-    output_function: "&simulator.StdoutOutputFunction{}"
-    termination_condition: "&simulator.NumberOfStepsTerminationCondition{MaxNumberOfSteps: 100}"
-    timestep_function: "&simulator.ConstantTimestepFunction{Stepsize: 1.0}"
-    init_time_value: 0.0
+simulation:
+  output_condition: "&simulator.EveryStepOutputCondition{}"
+  output_function: "&simulator.StdoutOutputFunction{}"
+  termination_condition: "&simulator.NumberOfStepsTerminationCondition{MaxNumberOfSteps: 100}"
+  timestep_function: "&simulator.ConstantTimestepFunction{Stepsize: 1.0}"
+  init_time_value: 0.0
 ```
 
 ### Common Output Functions
